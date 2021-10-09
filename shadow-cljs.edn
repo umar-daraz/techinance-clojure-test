@@ -1,0 +1,11 @@
+{:lein true
+ :builds {:client {:target :browser
+                   :js-options {:js-provider :shadow}
+                   :output-dir "resources/public/js"
+                   :module-loader true
+                   :module-hash-names true
+                   :devtools
+                   {:preloads [day8.re-frame-10x.preload]}
+                   :compiler-options {:closure-defines {re-frame.trace.trace-enabled? true
+                                                        day8.re-frame.tracing.trace-enabled? true}}
+                   :modules {:main {:init-fn pingpong.main/main}}}}}
