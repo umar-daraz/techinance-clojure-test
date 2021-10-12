@@ -17,6 +17,11 @@
   ('John'),
   ('Anne')"])
 
+(def add-token-column-migration ["ALTER TABLE users ADD token text"])
+
+(defn run-add-token-migration []
+  (jdbc/execute! db-spec add-token-column-migration))
+
 (defn create-table [table-schema db-spec]
   (try
     (jdbc/execute! db-spec  table-schema)
@@ -27,7 +32,6 @@
 (defn seed-db []
   (with-open [connection (jdbc/get-connection db-spec)]
     (jdbc/execute! connection  insert-initial-users-statement)))
-
 
 (defn snake-case->kebab-case
   [column]
@@ -45,13 +49,49 @@
 (defn ^:dynamic fetch-user [id]
   (with-open
    [connection (jdbc/get-connection db-spec)]
-    (println connection)
     (->>
      (let [result (jdbc/execute-one! connection  ["select * from users where id= ? " id])]
        (if (nil? result) nil
            (format-output-keywords result))))))
 
+(defn ^:dynamic search-user [search]
+  (if (s/blank? search) nil
+      (with-open
+       [connection (jdbc/get-connection db-spec)]
+        (->>
+         (let [result (jdbc/execute-one! connection  ["select * from users where first_name like ? limit 1", (str "%" search "%")])]
+           (if (nil? result) nil
+               (format-output-keywords result)))))))
+
+(defn ^:dynamic get-user-by-token [token]
+  (with-open
+   [connection (jdbc/get-connection db-spec)]
+    (->>
+     (let [result (jdbc/execute-one! connection  ["select * from users where token = ?", token])]
+       (if (nil? result) nil
+           (format-output-keywords result))))))
+
+(defn fetch-user-count []
+  (with-open
+   [connection (jdbc/get-connection db-spec)]
+    (->>
+     (let [result (jdbc/execute-one! connection  ["select count(*) from users"])]
+       (-> result
+           (first)
+           (second))))))
+
+(defn add-tokens-to-users []
+  (with-open
+   [connection (jdbc/get-connection db-spec)]
+    (let [user-count (fetch-user-count)
+          user-ids (range 1 (inc user-count))]
+      (doseq [id user-ids]
+        (let [token (.toString (java.util.UUID/randomUUID))]
+          (jdbc/execute! connection ["update users set token = ? where id = ?", token, id]))))))
+
 
 (comment
   (create-table schema-user-table db-spec)
-  (seed-db))
+  (seed-db)
+  (run-add-token-migration)
+  (add-tokens-to-users))

@@ -22,30 +22,33 @@
    :headers {"Content-Type" "text/html"}
    :body (slurp (io/resource "public/index.html"))})
 
-(def first-user-id 1)
-(defonce user-cursor (atom first-user-id))
-
 (defn ping-response [{:keys [ping user]}]
-  (let [user-name (if (nil? user) "" (:first-name user))]
-    (if (string/blank? ping)
-      {:ping "pong" :name user-name}
-      {:ping ping :name user-name})))
+  (let [ping
+        (if (string/blank? ping)
+          {:ping "pong"}
+          {:ping ping})]
+    (-> ping
+        (cond-> user (assoc :token (:token user))))))
 
 
 (defn pong
   "Implementation of the `/api/ping` endpoint."
   [{{:keys [value]} :params}]
-  (let [user (db/fetch-user  @user-cursor)
-        next-user-id (if (nil? user) (inc first-user-id) (inc @user-cursor))
-        user (if (nil? user) (db/fetch-user first-user-id) user)]
-    (reset! user-cursor  next-user-id)
+  (let [user (db/search-user  value)]
     (response/ok
      (ping-response {:ping value :user user }))))
+
+(defn get-name-by-token-handler [{{:keys [token]} :params}]
+  (let [user (db/get-user-by-token token)]
+    (println user)
+    (response/ok
+     {:name (:first-name user)})))
 
 (def routes
   (route/expand-routes
    #{["/" :get index :route-name :index]
      ["/api/ping" :get [http/json-body pong] :route-name :pong]
+     ["/api/token" :get [http/json-body get-name-by-token-handler] :route-name :token]
      ["/public/*" :get resources :route-name :resources]}))
 
 (def service

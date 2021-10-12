@@ -13,10 +13,32 @@
                      db
                      {::pongs []})))
 
+(rf/reg-event-fx
+ ::get-name-by-token
+ (fn [cofx [_ token]]
+   {:db (dissoc (:db cofx) ::get-name-by-token ::error)
+    :http-xhrio
+    {:method :get
+     :uri (str "http://localhost:9001/api/token?token=" token)
+     :request-format (ajax/json-request-format {:keywords? true})
+     :response-format (ajax/json-response-format {:keywords? true})
+     :on-success [::get-name-by-token-success token]
+     :on-failure [::error]}}))
+
 (rf/reg-event-db
+ ::get-name-by-token-success
+ (fn [db [_ token result]]
+   (println token result)
+   (update db ::pongs #(map (fn [ping]
+                              (if (= (:token ping) token)
+                                (into ping result)
+                                ping))  %))))
+
+(rf/reg-event-fx
  ::pong
- (fn [db [_ result]]
-   (update db ::pongs #(conj % result))))
+ (fn [cofx [_ result]]
+   {:db (update (:db cofx) ::pongs #(conj % result))
+    :dispatch (if (:token result) [::get-name-by-token  (:token result)] [])}))
 
 (rf/reg-event-db
  ::error
