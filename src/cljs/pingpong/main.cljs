@@ -7,10 +7,16 @@
             [day8.re-frame.http-fx]))
 
 
+(rf/reg-event-db ::initialize-db
+                 (fn [db _]
+                   (if db
+                     db
+                     {::pongs []})))
+
 (rf/reg-event-db
  ::pong
  (fn [db [_ result]]
-   (assoc db ::pong result)))
+   (update db ::pongs #(conj % result))))
 
 (rf/reg-event-db
  ::error
@@ -31,9 +37,9 @@
 (rf/reg-event-fx ::ping ping)
 
 (rf/reg-sub
- ::pong
+ ::pongs
  (fn [db _query]
-   (get-in db [::pong :ping])))
+   (get-in db [::pongs])))
 
 (rf/reg-sub
  ::error
@@ -48,17 +54,20 @@
 
 (defn <root>
   []
-  (r/with-let [pong (rf/subscribe [::pong])
+  (r/with-let [pongs (rf/subscribe [::pongs])
                error (rf/subscribe [::error])
-               ping-value (r/atom "")]
+               input-value (r/atom "")]
     [:div
-     [:input {:value @ping-value :on-change #(reset! ping-value (-> % .-target .-value))}]
-     [:button {:on-click #(rf/dispatch [::ping @ping-value])} "Ping!"]
-     (when @pong
-       [:div @pong])
+     [:input {:value @input-value :on-change #(reset! input-value (-> % .-target .-value))}]
+     [:button {:on-click #(rf/dispatch [::ping @input-value])} "Ping!"]
+     (when @pongs
+       [:ul
+        (for [[i pong] (map-indexed vector @pongs)]
+          ^{:key i} [:li (str  (:ping pong) " : " (:name pong))])])
      (when @error
        [:div {:style {:color "red"}} "Unable to ping: " @error])]))
 
 (defn ^:dev/after-load main
   []
+  (rf/dispatch-sync [::initialize-db])
   (dom/render [<root>] (.getElementById js/document "root")))

@@ -11,14 +11,14 @@
                  [io.pedestal/pedestal.jetty "0.5.5"]
                  [metosin/ring-http-response "0.9.1"]
                  [cheshire "5.10.0"]
-
+                 [com.github.seancorfield/next.jdbc "1.2.731"]
+                 [org.xerial/sqlite-jdbc "3.23.1"]
                  [day8.re-frame/tracing "0.6.2"]
                  [day8.re-frame/re-frame-10x "1.0.2"]
-
                  [reagent "1.0.0"]
                  [re-frame "1.2.0"]
                  [day8.re-frame/http-fx "0.2.3"]]
-  :source-paths ["src/clj" "src/cljc" "src/cljs"]
+  :source-paths ["src/clj" "src/cljc" "src/cljs", "data"]
 
   :aliases {"watch-cljs" ["run" "-m" "shadow.cljs.devtools.cli" "watch" "client"]}
 

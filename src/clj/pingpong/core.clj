@@ -6,7 +6,9 @@
             [ring.util.http-response :as response]
             [ring.middleware.resource :as resource]
             [clojure.string :as string]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [db :as db]
+            ))
 
 (defn resources
   "Retrieve a resource from /resources. `lein watch-cljs` will dump js resources
@@ -20,14 +22,25 @@
    :headers {"Content-Type" "text/html"}
    :body (slurp (io/resource "public/index.html"))})
 
+(def first-user-id 1)
+(defonce user-cursor (atom first-user-id))
+
+(defn ping-response [{:keys [ping user]}]
+  (let [user-name (if (nil? user) "" (:first-name user))]
+    (if (string/blank? ping)
+      {:ping "pong" :name user-name}
+      {:ping ping :name user-name})))
+
+
 (defn pong
   "Implementation of the `/api/ping` endpoint."
   [{{:keys [value]} :params}]
-  (response/ok 
-   (if (string/blank? value)
-     {:ping "pong"}
-     {:ping value}
-     )))
+  (let [user (db/fetch-user  @user-cursor)
+        next-user-id (if (nil? user) (inc first-user-id) (inc @user-cursor))
+        user (if (nil? user) (db/fetch-user first-user-id) user)]
+    (reset! user-cursor  next-user-id)
+    (response/ok
+     (ping-response {:ping value :user user }))))
 
 (def routes
   (route/expand-routes
